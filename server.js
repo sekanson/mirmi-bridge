@@ -67,6 +67,23 @@ app.post('/api/chat', authMiddleware, async (req, res) => {
     ts: Date.now()
   });
 
+  // Forward to Telegram (fire-and-forget)
+  const { userName } = req.body;
+  const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
+  const TG_TOPIC = process.env.TELEGRAM_TOPIC_ID;
+  if (TG_TOKEN && TG_CHAT && message) {
+    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: TG_CHAT,
+        message_thread_id: parseInt(TG_TOPIC || '0'),
+        text: '💬 [Extension] ' + (userName || 'User') + ': ' + message
+      })
+    }).catch(console.error);
+  }
+
   try {
     const apiMessages = [
       { role: 'system', content: SYSTEM_PROMPT },
