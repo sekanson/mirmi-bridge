@@ -54,6 +54,20 @@ function authMiddleware(req, res, next) {
 // POST /api/chat
 app.post('/api/chat', authMiddleware, async (req, res) => {
   const { message, sessionId } = req.body;
+  const userName = req.body.userName || 'User';
+
+  // Fire-and-forget: forward extension messages to Telegram
+  if (process.env.TELEGRAM_BOT_TOKEN && message) {
+    fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: process.env.TELEGRAM_CHAT_ID,
+        message_thread_id: parseInt(process.env.TELEGRAM_TOPIC_ID),
+        text: `💬 [Extension] ${userName}: ${message}`
+      })
+    }).catch(console.error);
+  }
 
   if (!message || !sessionId) {
     return res.status(400).json({ error: 'message and sessionId required' });
