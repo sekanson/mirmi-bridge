@@ -292,6 +292,37 @@ app.post('/api/upload-image', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /api/send-telegram -- send message to specific Telegram group
+app.post('/api/send-telegram', authMiddleware, async (req, res) => {
+  const { message, userName, chatId, imageData } = req.body;
+  if (!message && !imageData) return res.status(400).json({ error: 'message required' });
+
+  // Route based on chatId
+  const isAvacar = chatId === 'avacar';
+  const telegramGroupId = isAvacar ? '-1003868986143' : '-1003737484216';
+  const threadId = isAvacar ? null : '5148';
+
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+  if (!BOT_TOKEN) return res.status(500).json({ error: 'No bot token configured' });
+
+  try {
+    const text = `${userName || 'User'}: ${message || ''}`;
+    const payload = { chat_id: telegramGroupId, text };
+    if (threadId) payload.message_thread_id = parseInt(threadId);
+
+    const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    if (!d.ok) return res.status(500).json({ error: d.description });
+    res.json({ ok: true, messageId: d.result?.message_id });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'mirmi-bridge', version: '2.0.0' });
